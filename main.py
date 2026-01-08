@@ -1,5 +1,6 @@
 import os
 import discord
+from discord import app_commands
 from discord.ext import commands
 from deep_translator import GoogleTranslator
 
@@ -8,54 +9,42 @@ TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 intents = discord.Intents.default()
 intents.message_content = True
 
-# Kullanıcı -> hedef dil kayıtları
-user_lang = {}
-
 bot = commands.Bot(command_prefix="!", intents=intents)
+tree = bot.tree
 
-@bot.event
-async def on_ready():
-    print(f"Bot giriş yaptı: {bot.user}")
+user_langs = {}  # user_id : target_language
 
-@bot.command()
-async def lang(ctx, code=None):
-    """
-    !lang tr
-    !lang en
-    !lang ru
-    """
-    if code is None:
-        await ctx.send("🌍 Dil seç:\nÖrnek: `!lang tr`")
-        return
+@tree.command(name="lang", description="Hedef dili ayarla (örnek: /lang tr)")
+async def set_lang(interaction: discord.Interaction, dil: str):
+    user_langs[interaction.user.id] = dil.lower()
+    await interaction.response.send_message(f"✔ Çeviri dili **{dil}** olarak ayarlandı!", ephemeral=True)
 
-    user_lang[ctx.author.id] = code.lower()
-    await ctx.send(f"✔️ Senin mesajların **{code.upper()}** diline çevrilecek.")
+@tree.command(name="stop", description="Otomatik çeviriyi kapat")
+async def stop_lang(interaction: discord.Interaction):
+    user_langs.pop(interaction.user.id, None)
+    await interaction.response.send_message("❌ Otomatik çeviri kapatıldı!", ephemeral=True)
 
 @bot.event
 async def on_message(message):
-    # Bot kendi mesajını görmezden gelir
-    if message.author == bot.user:
+    if message.author.bot:
         return
 
-    # Kullanıcı bir dil ayarlamadıysa hiçbir şey yapma
-    if message.author.id not in user_lang:
-        await bot.process_commands(message)
-        return
-
-    target = user_lang[message.author.id]
-
-    try:
-        translated = GoogleTranslator(source='auto', target=target).translate(message.content)
-
-        # Orijinal mesajın hemen altına görünür, embed değil
-        if translated.lower() != message.content.lower():
-            await message.channel.send(
-                f"🗣️ {message.author.display_name} → **{target.upper()}**: {translated}",
-                reference=message
-            )
-    except Exception as e:
-        print("Çeviri hatası:", e)
+    for uid, lang in user_langs.items():
+        # Başkalarının mesajını çevir (mesaj sahibine göndermiyoruz)
+        if uid != message.author.id:
+            try:
+                text = GoogleTranslator(source="auto", target=lang).translate(message.content)
+                user = await bot.fetch_user(uid)
+                # Ephemeral olmadığı için DM yerine sessiz mention simülasyonu
+                await user.send(f"💬 **{message.author.display_name}:** {text}")
+            except:
+                pass
 
     await bot.process_commands(message)
+
+@bot.event
+async def on_ready():
+    await tree.sync()
+    print(f"Bot giriş yaptı: {bot.user}")
 
 bot.run(TOKEN)
