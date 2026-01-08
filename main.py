@@ -8,41 +8,54 @@ TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
-
-# Hedef dilleri kullanıcı bazında tutuyoruz
+# Kullanıcı -> hedef dil kayıtları
 user_lang = {}
+
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"Bot aktif ✔ Giriş yaptı: {bot.user}")
+    print(f"Bot giriş yaptı: {bot.user}")
 
 @bot.command()
-async def setlang(ctx, lang):
+async def lang(ctx, code=None):
     """
-    Kullanıcı kendi çeviri dilini seçer ör:
-    !setlang tr
-    !setlang ru
-    !setlang en
+    !lang tr
+    !lang en
+    !lang ru
     """
-    user_lang[ctx.author.id] = lang.lower()
-    await ctx.reply(f"🌍 Çeviri dilin kaydedildi: **{lang}**", ephemeral=True)
+    if code is None:
+        await ctx.send("🌍 Dil seç:\nÖrnek: `!lang tr`")
+        return
+
+    user_lang[ctx.author.id] = code.lower()
+    await ctx.send(f"✔️ Senin mesajların **{code.upper()}** diline çevrilecek.")
 
 @bot.event
 async def on_message(message):
+    # Bot kendi mesajını görmezden gelir
     if message.author == bot.user:
         return
 
-    # Kullanıcı kayıtlı değilse işlem yapma
-    for uid, lang in user_lang.items():
-        # Sadece mesaj sahibi olmayanlar için çevir
-        if message.author.id != uid:
-            try:
-                translated = GoogleTranslator(source='auto', target=lang).translate(message.content)
-                if translated.lower() != message.content.lower():
-                    user = await bot.fetch_user(uid)
-                    await user.send(f"💬 **{message.author.name} dedi ki:**\n{message.content}\n\n🔁 Çeviri (**{lang}**):\n**{translated}**")
-            except Exception:
-                pass
+    # Kullanıcı bir dil ayarlamadıysa hiçbir şey yapma
+    if message.author.id not in user_lang:
+        await bot.process_commands(message)
+        return
+
+    target = user_lang[message.author.id]
+
+    try:
+        translated = GoogleTranslator(source='auto', target=target).translate(message.content)
+
+        # Orijinal mesajın hemen altına görünür, embed değil
+        if translated.lower() != message.content.lower():
+            await message.channel.send(
+                f"🗣️ {message.author.display_name} → **{target.upper()}**: {translated}",
+                reference=message
+            )
+    except Exception as e:
+        print("Çeviri hatası:", e)
 
     await bot.process_commands(message)
+
+bot.run(TOKEN)
