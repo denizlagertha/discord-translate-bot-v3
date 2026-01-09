@@ -52,7 +52,7 @@ async def translate_context(interaction: discord.Interaction, message: discord.M
     target = LANG.get(interaction.guild_id, "en")
     translated = translate(message.content, target)
     await interaction.response.send_message(f"🔤 **{translated}**", ephemeral=True)
-from googletrans import Translator
+
 translator = Translator()
 
 @client.event
