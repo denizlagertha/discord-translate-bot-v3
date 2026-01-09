@@ -50,6 +50,19 @@ async def translate_context(interaction: discord.Interaction, message: discord.M
     target = LANG.get(interaction.guild_id, "en")
     translated = translate(message.content, target)
     await interaction.response.send_message(f"🔤 **{translated}**")
+from googletrans import Translator
+translator = Translator()
+
+@client.event
+async def on_message(message):
+    if message.author == client.user:
+        return
+
+    try:
+        result = translator.translate(message.content, dest=target_lang)
+        await message.channel.send(f"> {result.text}")
+    except Exception as e:
+        await message.channel.send("⚠️ Çeviri yapılamadı.")
 
 @client.event
 async def on_ready():
