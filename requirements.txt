@@ -1,5 +1,2 @@
 discord.py
-deep-translator
 requests
-aiohttp
-flask
