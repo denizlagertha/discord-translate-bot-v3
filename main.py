@@ -32,10 +32,12 @@ def translate(text, target):
     }
 
     r = requests.post(url, json=payload, headers=headers)
+
     if r.status_code == 200:
         return r.json()["data"]["translations"]["translatedText"]
     else:
         return "translation failed"
+
 
 @client.tree.command(name="setlang", description="Sunucu dili ayarla")
 @app_commands.choices(lang=[
@@ -43,13 +45,13 @@ def translate(text, target):
 ])
 async def setlang(interaction: discord.Interaction, lang: app_commands.Choice[str]):
     LANG[interaction.guild_id] = lang.value
-    await interaction.response.send_message(f"🌍 Language set to **{lang.name}**!")
+    await interaction.response.send_message(f"🌍 Language set to **{lang.name}**!", ephemeral=True)
 
 @client.tree.context_menu(name="Translate message")
 async def translate_context(interaction: discord.Interaction, message: discord.Message):
     target = LANG.get(interaction.guild_id, "en")
     translated = translate(message.content, target)
-    await interaction.response.send_message(f"🔤 **{translated}**")
+    await interaction.response.send_message(f"🔤 **{translated}**", ephemeral=True)
 from googletrans import Translator
 translator = Translator()
 
