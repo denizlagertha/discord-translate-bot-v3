@@ -1,67 +1,68 @@
 import os
 import discord
-from discord import app_commands
 from discord.ext import commands
-from deep_translator import GoogleTranslator
+from discord import app_commands
+from deepl import Translator
 
-TOKEN = os.getenv("DISCORD_TOKEN")
+TOKEN = os.getenv("DISCORD_BOT_TOKEN")
+DEEPL_KEY = os.getenv("DEEPL_API_KEY")
+
+translator = Translator(DEEPL_KEY)
 
 intents = discord.Intents.default()
 intents.message_content = True
+
 bot = commands.Bot(command_prefix="!", intents=intents)
+guild_lang = {}  # per-server language memory
 
-# sunucuya göre dil tut
-user_lang = {}
-
-class TranslateButton(discord.ui.View):
-    def __init__(self, original, target_lang):
-        super().__init__(timeout=None)
-        self.original = original
-        self.target_lang = target_lang
-
-    @discord.ui.button(label="Çevir ✨", style=discord.ButtonStyle.primary)
-    async def translate_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        translated = GoogleTranslator(source="auto", target=self.target_lang).translate(self.original)
-        await interaction.response.send_message(
-            f"**Çeviri ({self.target_lang}):** {translated}",
-            ephemeral=True
-        )
 
 @bot.event
 async def on_ready():
+    print(f"Logged in as {bot.user}")
     try:
         synced = await bot.tree.sync()
-        print(f"Slash komutları senkron: {len(synced)}")
+        print(f"Synced {len(synced)} commands.")
     except Exception as e:
         print(e)
-    print(f"Giriş yapıldı: {bot.user}")
 
-@bot.tree.command(name="lang", description="Çeviri dilini ayarla")
-@app_commands.describe(code="ör: tr, en, fr, es")
-async def set_lang(interaction: discord.Interaction, code: str):
-    user_lang[interaction.user.id] = code.lower()
+
+# /setlang
+@bot.tree.command(name="setlang", description="Select your translation target language")
+@app_commands.describe(language="Target language code (example: TR, EN, DE)")
+async def setlang(interaction: discord.Interaction, language: str):
+    guild_lang[interaction.guild_id] = language.upper()
     await interaction.response.send_message(
-        f"✔ Çeviri dili **{code}** olarak ayarlandı!",
+        f"✔ Translation language set to **{language.upper()}**",
         ephemeral=True
     )
 
-@bot.event
-async def on_message(message):
-    if message.author.bot:
+
+# Context Menu: Translate
+@bot.tree.context_menu(name="Translate Message")
+async def translate_message(interaction: discord.Interaction, message: discord.Message):
+    if interaction.guild_id not in guild_lang:
+        await interaction.response.send_message(
+            "⚠ No language set. Use **/setlang <code>** first.",
+            ephemeral=True
+        )
+        return
+    
+    target = guild_lang[interaction.guild_id]
+
+    try:
+        result = translator.translate_text(message.content, target_lang=target)
+        translated = result.text
+    except Exception as e:
+        await interaction.response.send_message(
+            f"Translation failed: {e}",
+            ephemeral=True
+        )
         return
 
-    for uid, lang in user_lang.items():
-        if uid != message.author.id:  # kendi mesajını çevirme!
-            try:
-                view = TranslateButton(message.content, lang)
-                await message.channel.send(
-                    f"💬 **Yeni mesaj! Çevirmek ister misin?**",
-                    view=view
-                )
-            except Exception as e:
-                print("Hata:", e)
-                pass
+    await interaction.response.send_message(
+        f"**Translated to {target}:**\n{translated}",
+        ephemeral=True
+    )
 
-    await bot.process_commands(message)
 
 bot.run(TOKEN)
