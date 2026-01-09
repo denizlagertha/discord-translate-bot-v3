@@ -1,85 +1,50 @@
 import os
 import discord
-import requests
-from discord.ext import commands
 from discord import app_commands
-
-# -------- KEEP ALIVE (Fake Web Server) ----------
-from flask import Flask
-from threading import Thread
-
-app = Flask('')
-
-@app.route('/')
-def home():
-    return "Bot is alive!"
-
-def run():
-    app.run(host='0.0.0.0', port=10000)
-
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
-# ------------------------------------------------
+from discord.ext import commands
+import requests
+from keep_alive import keep_alive
 
 TOKEN = os.getenv("TOKEN")
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
 
-intents = discord.Intents.default()
-intents.message_content = True
+intents = discord.Intents.all()
 client = commands.Bot(command_prefix="!", intents=intents)
 
-# Sunucuya göre dil saklama
+# Sunucuya göre ayarlanmış diller
 server_lang = {}
 
-# Dil seçme komutu
-@client.tree.command(name="setlang", description="Set server translation language")
-@app_commands.describe(language="Target language code (en, tr, es, de, fr etc)")
-async def setlang(interaction: discord.Interaction, language: str):
-    server_lang[interaction.guild_id] = language
-    await interaction.response.send_message(
-        f"Translation language set to: **{language}**",
-        ephemeral=True
-    )
-
-# Sağ tık çeviri
-@client.tree.context_menu(name="Translate")
-async def translate(interaction: discord.Interaction, message: discord.Message):
-    lang = server_lang.get(interaction.guild_id, "en")
-
+# ÇEVİRME FONKSİYONU
+def translate(text, target):
     url = "https://google-translate113.p.rapidapi.com/api/v1/translator/text"
-    payload = {"from": "auto", "to": lang, "text": message.content}
+    payload = {"from": "auto", "to": target, "text": text}
     headers = {
-        "content-type": "application/x-www-form-urlencoded",
+        "content-type": "application/json",
         "X-RapidAPI-Key": RAPIDAPI_KEY,
         "X-RapidAPI-Host": "google-translate113.p.rapidapi.com"
     }
+    r = requests.post(url, json=payload, headers=headers)
+    return r.json().get("trans", "⚠️ Translation failed")
 
-    try:
-        response = requests.post(url, data=payload, headers=headers)
-        result = response.json()
-
-        translated = result.get("trans", None)
-
-        if not translated:
-            raise Exception("No translation returned")
-
-        await interaction.response.send_message(
-            f"**Translated ({lang}):**\n{translated}",
-            ephemeral=True
-        )
-
-    except Exception:
-        await interaction.response.send_message(
-            "Translation failed.",
-            ephemeral=True
-        )
-
+# Bot hazır
 @client.event
 async def on_ready():
     await client.tree.sync()
-    print("Bot is online!")
+    print(f"Bot ONLINE: {client.user}")
 
-# Start fake web server, then bot
+# 🌍 Dil Ayarlama Komutu
+@client.tree.command(name="setlang", description="Set server translation language")
+@app_commands.describe(code="Language code (en, tr, es, fr, de...)")
+async def setlang(interaction: discord.Interaction, code: str):
+    server_lang[interaction.guild_id] = code.lower()
+    await interaction.response.send_message(f"🌐 Server language set to **{code}**!")
+
+# 📌 Sağ tık menüsü
+@client.tree.context_menu(name="Translate message")
+async def translate_message(interaction: discord.Interaction, message: discord.Message):
+    lang = server_lang.get(interaction.guild_id, "en")
+    translated = translate(message.content, lang)
+    await interaction.response.send_message(f"➡️ **{translated}**")
+
 keep_alive()
 client.run(TOKEN)
