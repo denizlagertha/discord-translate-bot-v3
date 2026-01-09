@@ -8,12 +8,12 @@ from keep_alive import keep_alive
 TOKEN = os.getenv("TOKEN")
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
 
-LANG = {}  # Sunucu dili
+LANG = {}  # Server language
 
 intents = discord.Intents.default()
 client = commands.Bot(command_prefix="!", intents=intents)
 
-# Dil Kodları
+# Language Codes
 language_options = {
     "English": "en",
     "Turkish": "tr",
@@ -39,7 +39,7 @@ def translate(text, target):
         return "translation failed"
 
 
-@client.tree.command(name="setlang", description="Sunucu dili ayarla")
+@client.tree.command(name="setlang", description="Set server language")
 @app_commands.choices(lang=[
     app_commands.Choice(name=k, value=v) for k, v in language_options.items()
 ])
@@ -53,12 +53,6 @@ async def translate_context(interaction: discord.Interaction, message: discord.M
     translated = translate(message.content, target)
     await interaction.response.send_message(f"🔤 **{translated}**", ephemeral=True)
 
-translator = Translator()
-
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
 
 @client.event
 async def on_ready():
