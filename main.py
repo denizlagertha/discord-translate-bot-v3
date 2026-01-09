@@ -1,68 +1,70 @@
 import os
+import requests
 import discord
-from discord.ext import commands
 from discord import app_commands
-from deepl import Translator
+from discord.ext import commands
 
-TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-DEEPL_KEY = os.getenv("DEEPL_API_KEY")
+bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 
-translator = Translator(DEEPL_KEY)
-
-intents = discord.Intents.default()
-intents.message_content = True
-
-bot = commands.Bot(command_prefix="!", intents=intents)
-guild_lang = {}  # per-server language memory
-
+TARGET_LANG = "tr"
 
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user}")
+    print(f"Bot logged in as {bot.user}")
     try:
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} commands.")
+        await bot.tree.sync()
+        print("Slash commands synced!")
     except Exception as e:
         print(e)
 
-
-# /setlang
-@bot.tree.command(name="setlang", description="Select your translation target language")
-@app_commands.describe(language="Target language code (example: TR, EN, DE)")
-async def setlang(interaction: discord.Interaction, language: str):
-    guild_lang[interaction.guild_id] = language.upper()
+# Slash command to set target language
+@bot.tree.command(name="setlang", description="Set your translate target language")
+@app_commands.describe(code="Language code, e.g. tr, en, ar, de, fr")
+async def setlang(interaction: discord.Interaction, code: str):
+    global TARGET_LANG
+    TARGET_LANG = code.lower()
     await interaction.response.send_message(
-        f"✔ Translation language set to **{language.upper()}**",
+        f"Language set to **{TARGET_LANG}**",
         ephemeral=True
     )
 
-
-# Context Menu: Translate
-@bot.tree.context_menu(name="Translate Message")
+# Message context menu: translate
+@bot.tree.context_menu(name="Translate")
 async def translate_message(interaction: discord.Interaction, message: discord.Message):
-    if interaction.guild_id not in guild_lang:
-        await interaction.response.send_message(
-            "⚠ No language set. Use **/setlang <code>** first.",
+    if message.author.id == bot.user.id:
+        return await interaction.response.send_message(
+            "Can't translate bot messages.",
             ephemeral=True
         )
-        return
-    
-    target = guild_lang[interaction.guild_id]
+
+    url = "https://deep-translate1.p.rapidapi.com/language/translate/v2"
+    payload = {
+        "q": message.content,
+        "source": "auto",
+        "target": TARGET_LANG
+    }
+
+    headers = {
+        "content-type": "application/json",
+        "X-RapidAPI-Key": os.getenv("RAPID_API_KEY"),
+        "X-RapidAPI-Host": "deep-translate1.p.rapidapi.com"
+    }
 
     try:
-        result = translator.translate_text(message.content, target_lang=target)
-        translated = result.text
-    except Exception as e:
+        response = requests.post(url, json=payload, headers=headers)
+        data = response.json()
+        translation = data["data"]["translations"]["translatedText"]
+
         await interaction.response.send_message(
-            f"Translation failed: {e}",
+            f"**Translation ({TARGET_LANG}):**\n{translation}",
             ephemeral=True
         )
-        return
+    except Exception as e:
+        await interaction.response.send_message(
+            "❌ Translation failed.",
+            ephemeral=True
+        )
+        print(e)
 
-    await interaction.response.send_message(
-        f"**Translated to {target}:**\n{translated}",
-        ephemeral=True
-    )
 
-
-bot.run(TOKEN)
+bot.run(os.getenv("DISCORD_TOKEN"))
