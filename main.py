@@ -1,77 +1,85 @@
 import os
 import discord
+import requests
 from discord.ext import commands
 from discord import app_commands
-import requests
 
-TOKEN = os.getenv("DISCORD_TOKEN")
+# -------- KEEP ALIVE (Fake Web Server) ----------
+from flask import Flask
+from threading import Thread
+
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is alive!"
+
+def run():
+    app.run(host='0.0.0.0', port=10000)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+# ------------------------------------------------
+
+TOKEN = os.getenv("TOKEN")
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
 
-bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
+intents = discord.Intents.default()
+intents.message_content = True
+client = commands.Bot(command_prefix="!", intents=intents)
 
-# Sunucu dilini kaydetmek için hafif bellek
-server_lang = {}  # server_id -> lang code
+# Sunucuya göre dil saklama
+server_lang = {}
 
-### RapidAPI çeviri ###
-def translate_text(text, target):
-    url = "https://google-translate1.p.rapidapi.com/language/translate/v2"
+# Dil seçme komutu
+@client.tree.command(name="setlang", description="Set server translation language")
+@app_commands.describe(language="Target language code (en, tr, es, de, fr etc)")
+async def setlang(interaction: discord.Interaction, language: str):
+    server_lang[interaction.guild_id] = language
+    await interaction.response.send_message(
+        f"Translation language set to: **{language}**",
+        ephemeral=True
+    )
 
+# Sağ tık çeviri
+@client.tree.context_menu(name="Translate")
+async def translate(interaction: discord.Interaction, message: discord.Message):
+    lang = server_lang.get(interaction.guild_id, "en")
+
+    url = "https://google-translate113.p.rapidapi.com/api/v1/translator/text"
+    payload = {"from": "auto", "to": lang, "text": message.content}
     headers = {
-        "x-rapidapi-key": RAPIDAPI_KEY,
-        "x-rapidapi-host": "google-translate1.p.rapidapi.com",
-        "content-type": "application/x-www-form-urlencoded"
-    }
-
-    data = {
-        "q": text,
-        "target": target
+        "content-type": "application/x-www-form-urlencoded",
+        "X-RapidAPI-Key": RAPIDAPI_KEY,
+        "X-RapidAPI-Host": "google-translate113.p.rapidapi.com"
     }
 
     try:
-        response = requests.post(url, data=data, headers=headers)
+        response = requests.post(url, data=payload, headers=headers)
         result = response.json()
 
-        if "data" in result and "translations" in result["data"]:
-            return result["data"]["translations"][0]["translatedText"]
-        return None
-    except:
-        return None
+        translated = result.get("trans", None)
 
-### Slash komut: dil ayarla ###
-@bot.tree.command(name="langset", description="Set your server's translation language")
-@app_commands.describe(lang="Target language code. Example: tr, en, es, de")
-async def langset(interaction: discord.Interaction, lang: str):
-    server_lang[interaction.guild.id] = lang.lower()
-    await interaction.response.send_message(
-        f"✔ Translation language set to **{lang}**",
-        ephemeral=True
-    )
+        if not translated:
+            raise Exception("No translation returned")
 
-### Mesaj sağ tık çeviri ###
-@bot.tree.context_menu(name="Translate (ephemeral)")
-async def translate_context(interaction: discord.Interaction, message: discord.Message):
-
-    # Dil seçilmemişse varsayılan TR
-    target = server_lang.get(interaction.guild.id, "tr")
-
-    translated = translate_text(message.content, target)
-
-    if not translated:
         await interaction.response.send_message(
-            "❌ Translation failed.",
+            f"**Translated ({lang}):**\n{translated}",
             ephemeral=True
         )
-        return
 
-    await interaction.response.send_message(
-        f"**Translated → {target}:**\n{translated}",
-        ephemeral=True
-    )
+    except Exception:
+        await interaction.response.send_message(
+            "Translation failed.",
+            ephemeral=True
+        )
 
-### Bot açılınca senkron ###
-@bot.event
+@client.event
 async def on_ready():
-    await bot.tree.sync()
-    print(f"Bot Ready: {bot.user}")
+    await client.tree.sync()
+    print("Bot is online!")
 
-bot.run(TOKEN)
+# Start fake web server, then bot
+keep_alive()
+client.run(TOKEN)
