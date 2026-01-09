@@ -60,12 +60,6 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    try:
-        result = translator.translate(message.content, dest=target_lang)
-        await message.channel.send(f"> {result.text}")
-    except Exception as e:
-        await message.channel.send("⚠️ Çeviri yapılamadı.")
-
 @client.event
 async def on_ready():
     await client.tree.sync()
