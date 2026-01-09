@@ -1,85 +1,72 @@
 import os
 import discord
-from discord.ext import commands
 from discord import app_commands
-from deep_translator import GoogleTranslator
+from discord.ext import commands
+from googletrans import Translator
 
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = True
-
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# user_id -> {'lang': 'xx', 'thread': thread_id}
-user_settings = {}
+translator = Translator()
 
-@bot.event
-async def on_ready():
-    print(f"Logged in as {bot.user}")
-    try:
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} commands")
-    except Exception as e:
-        print(e)
+# Kullanıcıya özel hedef dil
+user_lang = {}
 
-@bot.tree.command(name="lang", description="Set your translation language")
-async def set_lang(interaction: discord.Interaction, language: str):
-    await interaction.response.defer(ephemeral=True)
-
-    member = interaction.user
-
-    # Create new private thread if needed
-    thread = None
-    if member.id in user_settings and user_settings[member.id]["thread"]:
-        thread = interaction.channel.get_thread(user_settings[member.id]["thread"])
-
-    if thread is None:
-        try:
-            thread = await interaction.channel.create_thread(
-                name=f"{member.display_name}-translations",
-                type=discord.ChannelType.private_thread
-            )
-        except discord.Forbidden:
-            await interaction.followup.send("Botun thread açma izni yok!", ephemeral=True)
-            return
-        except Exception as e:
-            await interaction.followup.send(f"Hata: {e}", ephemeral=True)
-            return
-
-    user_settings[member.id] = {"lang": language.lower(), "thread": thread.id}
-
-    await interaction.followup.send(
-        f"✔ Çeviri dili **{language}** olarak ayarlandı.\n"
-        "🔒 Tüm çeviriler gizli threadine gönderilecek!",
+# Slash komut: dil ayarla
+@bot.tree.command(name="lang", description="Çeviri dilini ayarla (örnek: /lang tr)")
+@app_commands.describe(code="Hedef dil kodu örn: tr, en, ar")
+async def set_lang(interaction: discord.Interaction, code: str):
+    user_lang[interaction.user.id] = code.lower()
+    await interaction.response.send_message(
+        f"✔ Çeviri dili `{code}` olarak ayarlandı.",
         ephemeral=True
     )
 
+# Mesaj dinleyici
 @bot.event
 async def on_message(message):
+    # Botları yok say
     if message.author.bot:
         return
+    
+    # Kendini çevirmesin
+    if message.content.startswith("/") or message.content.startswith("!"):
+        return
 
-    # Process slash commands
-    await bot.process_commands(message)
+    for uid, lang in user_lang.items():
+        # Sadece hedef dil belirleyen kullanıcıya buton koy
+        if uid != message.author.id:
+            view = TranslateView(message.content, lang)
+            try:
+                await message.channel.send(
+                    content=f"🔤 **Çeviri için tıkla:**",
+                    reference=message,
+                    view=view,
+                    silent=True
+                )
+            except:
+                pass
 
-    for user_id, info in user_settings.items():
-        # Skip if author = user (kendi mesajını çevirme)
-        if message.author.id == user_id:
-            continue
+class TranslateView(discord.ui.View):
+    def __init__(self, text, lang):
+        super().__init__(timeout=None)
+        self.text = text
+        self.lang = lang
 
-        lang = info["lang"]
-        thread_id = info["thread"]
-        thread = message.channel.get_thread(thread_id)
+    @discord.ui.button(label="Çeviriyi Göster", style=discord.ButtonStyle.primary)
+    async def translate_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        translated = translator.translate(self.text, dest=self.lang).text
+        await interaction.response.send_message(
+            f"🌍 **Çeviri:** {translated}",
+            ephemeral=True
+        )
 
-        if not thread:
-            continue
-
-        try:
-            translated = GoogleTranslator(source='auto', target=lang).translate(message.content)
-            await thread.send(f"💬 **{message.author.display_name}**:\n{translated}")
-        except Exception as e:
-            print("Translation error:", e)
+@bot.event
+async def on_ready():
+    await bot.tree.sync()
+    print(f"{bot.user} online!")
 
 bot.run(TOKEN)
