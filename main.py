@@ -18,7 +18,31 @@ language_options = {
     "German": "de",
     "Spanish": "es",
     "French": "fr",
-    "Russian": "ru"
+    "Russian": "ru",
+    "Arabic": "ar",
+    "Hindi": "hi",
+    "Chinese (Simplified)": "zh-CN",
+    "Chinese (Traditional)": "zh-TW",
+    "Japanese": "ja",
+    "Korean": "ko",
+    "Vietnamese": "vi",
+    "Portuguese": "pt",
+    "Italian": "it",
+    "Dutch": "nl",
+    "Polish": "pl",
+    "Ukrainian": "uk",
+    "Greek": "el",
+    "Czech": "cs",
+    "Hungarian": "hu",
+    "Swedish": "sv",
+    "Finnish": "fi",
+    "Norwegian": "no",
+    "Danish": "da",
+    "Thai": "th",
+    "Indonesian": "id",
+    "Malay": "ms"
+}
+
 }
 
 def translate(text, target):
