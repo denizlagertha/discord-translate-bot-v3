@@ -79,5 +79,6 @@ async def on_ready():
     await client.tree.sync()
     print("Bot is online!")
 
-run()
+keep_alive()
 client.run(TOKEN)
+
