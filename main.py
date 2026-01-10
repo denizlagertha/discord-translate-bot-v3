@@ -21,27 +21,28 @@ language_options = {
     "Russian": "ru",
     "Arabic": "ar",
     "Hindi": "hi",
-    "Chinese (Simplified)": "zh-CN",
-    "Chinese (Traditional)": "zh-TW",
     "Japanese": "ja",
+    "Chinese (Simplified)": "zh",
     "Korean": "ko",
     "Vietnamese": "vi",
-    "Portuguese": "pt",
     "Italian": "it",
+    "Portuguese": "pt",
     "Dutch": "nl",
     "Polish": "pl",
-    "Ukrainian": "uk",
+    "Swedish": "sv",
     "Greek": "el",
     "Czech": "cs",
     "Hungarian": "hu",
-    "Swedish": "sv",
-    "Finnish": "fi",
-    "Norwegian": "no",
-    "Danish": "da",
     "Thai": "th",
     "Indonesian": "id",
-    "Malay": "ms"
+    "Ukrainian": "uk",
+    "Romanian": "ro",
+    "Bulgarian": "bg",
+    "Finnish": "fi",
+    "Danish": "da"
 }
+
+
 
 }
 
