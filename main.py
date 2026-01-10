@@ -17,7 +17,7 @@ language_options = {
     "Japanese": "ja", "Korean": "ko", "Chinese (Simplified)": "zh-CN",
     "Vietnamese": "vi", "Portuguese": "pt", "Italian": "it",
     "Dutch": "nl", "Polish": "pl", "Ukrainian": "uk", "Romanian": "ro",
-    "Greek": "el", "Czech": "cs", "Hungarian": "hu", "Swedish": "sv",
+    "Hungarian": "hu", "Swedish": "sv",
     "Norwegian": "no", "Danish": "da", "Finnish": "fi", "Thai": "th",
     "Malay": "ms", "Indonesian": "id"
 }
