@@ -3,11 +3,20 @@ import discord
 import requests
 from discord.ext import commands
 from discord import app_commands
-from keep_alive import keep_alive
+from flask import Flask
+
+# Flask server
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "OK"
+
+def run():
+    app.run(host='0.0.0.0', port=10000)
 
 TOKEN = os.getenv("TOKEN")
 LANG = {}  # Server language
-
 intents = discord.Intents.default()
 client = commands.Bot(command_prefix="!", intents=intents)
 
@@ -43,13 +52,9 @@ language_options = {
     "Indonesian": "id"
 }
 
-
-
 def translate(text, target):
     url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl={target}&dt=t&q={text}"
-
     r = requests.get(url)
-
     try:
         return r.json()[0][0][0]
     except:
@@ -74,5 +79,5 @@ async def on_ready():
     await client.tree.sync()
     print("Bot is online!")
 
-keep_alive()
+run()
 client.run(TOKEN)
