@@ -22,13 +22,13 @@ language_options = {
 }
 
 def translate(text, target):
-    url = f"https://api.mymemory.translated.net/get?q={text}&langpair=auto|{target}"
+    url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl={target}&dt=t&q={text}"
+
     r = requests.get(url)
 
-    if r.status_code == 200:
-        data = r.json()
-        return data["responseData"]["translatedText"]
-    else:
+    try:
+        return r.json()[0][0][0]
+    except:
         return "translation failed"
 
 @client.tree.command(name="setlang", description="Set server language")
