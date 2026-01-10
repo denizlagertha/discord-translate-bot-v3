@@ -45,9 +45,6 @@ language_options = {
 
 
 
-
-}
-
 def translate(text, target):
     url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl={target}&dt=t&q={text}"
 
