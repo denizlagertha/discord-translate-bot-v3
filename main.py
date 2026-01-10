@@ -3,24 +3,15 @@ import discord
 import requests
 from discord.ext import commands
 from discord import app_commands
-from flask import Flask
 
-# Flask server
-app = Flask('')
-
-@app.route('/')
-def home():
-    return "OK"
-
-def run():
-    app.run(host='0.0.0.0', port=10000)
+from keep_alive import keep_alive   # ÇOK ÖNEMLİ
 
 TOKEN = os.getenv("TOKEN")
 LANG = {}  # Server language
+
 intents = discord.Intents.default()
 client = commands.Bot(command_prefix="!", intents=intents)
 
-# Language Codes
 language_options = {
     "English": "en",
     "Turkish": "tr",
@@ -81,4 +72,3 @@ async def on_ready():
 
 keep_alive()
 client.run(TOKEN)
-
