@@ -3,53 +3,35 @@ import discord
 import requests
 from discord.ext import commands
 from discord import app_commands
+from keep_alive import keep_alive
 
-from keep_alive import keep_alive   # ÇOK ÖNEMLİ
-
-TOKEN = os.getenv("TOKEN")
 LANG = {}  # Server language
 
 intents = discord.Intents.default()
 client = commands.Bot(command_prefix="!", intents=intents)
 
+# TÜM DİLLER
 language_options = {
-    "English": "en",
-    "Turkish": "tr",
-    "German": "de",
-    "Spanish": "es",
-    "French": "fr",
-    "Russian": "ru",
-    "Arabic": "ar",
-    "Hindi": "hi",
-    "Japanese": "ja",
-    "Korean": "ko",
-    "Chinese (Simplified)": "zh-CN",
-    "Vietnamese": "vi",
-    "Portuguese": "pt",
-    "Italian": "it",
-    "Dutch": "nl",
-    "Polish": "pl",
-    "Ukrainian": "uk",
-    "Romanian": "ro",
-    "Greek": "el",
-    "Czech": "cs",
-    "Hungarian": "hu",
-    "Swedish": "sv",
-    "Norwegian": "no",
-    "Danish": "da",
-    "Finnish": "fi",
-    "Thai": "th",
-    "Malay": "ms",
-    "Indonesian": "id"
+    "English": "en", "Turkish": "tr", "German": "de", "Spanish": "es",
+    "French": "fr", "Russian": "ru", "Arabic": "ar", "Hindi": "hi",
+    "Japanese": "ja", "Korean": "ko", "Chinese (Simplified)": "zh-CN",
+    "Vietnamese": "vi", "Portuguese": "pt", "Italian": "it",
+    "Dutch": "nl", "Polish": "pl", "Ukrainian": "uk", "Romanian": "ro",
+    "Greek": "el", "Czech": "cs", "Hungarian": "hu", "Swedish": "sv",
+    "Norwegian": "no", "Danish": "da", "Finnish": "fi", "Thai": "th",
+    "Malay": "ms", "Indonesian": "id"
 }
 
 def translate(text, target):
-    url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl={target}&dt=t&q={text}"
+    url = (
+        "https://translate.googleapis.com/translate_a/single"
+        f"?client=gtx&sl=auto&tl={target}&dt=t&q={requests.utils.quote(text)}"
+    )
     r = requests.get(url)
     try:
         return r.json()[0][0][0]
     except:
-        return "translation failed"
+        return "⚠️ Translation failed"
 
 @client.tree.command(name="setlang", description="Set server language")
 @app_commands.choices(lang=[
@@ -57,7 +39,9 @@ def translate(text, target):
 ])
 async def setlang(interaction: discord.Interaction, lang: app_commands.Choice[str]):
     LANG[interaction.guild_id] = lang.value
-    await interaction.response.send_message(f"🌍 Language set to **{lang.name}**!", ephemeral=True)
+    await interaction.response.send_message(
+        f"🌍 Language set to **{lang.name}**!", ephemeral=True
+    )
 
 @client.tree.context_menu(name="Translate message")
 async def translate_context(interaction: discord.Interaction, message: discord.Message):
@@ -71,4 +55,4 @@ async def on_ready():
     print("Bot is online!")
 
 keep_alive()
-client.run(TOKEN)
+client.run(os.getenv("TOKEN"))
